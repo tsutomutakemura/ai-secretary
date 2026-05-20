@@ -177,30 +177,29 @@ function addMsg(role, text) {
   return div;
 }
 
-async function callAI(text) {
-  history.push({role:'user',content:text});
-  const res = await fetch('https://api.anthropic.com/v1/messages',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:400,system:SYSTEM,messages:history})
+async function callAI(messages, system) {
+  const res = await fetch('/api/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ messages, system })
   });
   const data = await res.json();
-  const reply = data.content?.find(b=>b.type==='text')?.text || 'エラーが発生しました。';
-  history.push({role:'assistant',content:reply});
-  return reply;
+  return data.content?.find(b => b.type === 'text')?.text || 'エラーが発生しました。';
 }
 
 async function sendMsg() {
   const inp = document.getElementById('chat-input');
   const text = inp.value.trim();
-  if(!text) return;
+  if (!text) return;
   inp.value = '';
   document.getElementById('chips').style.display = 'none';
   addMsg('user', text);
-  const loading = addMsg('ai','<div class="dots"><span></span><span></span><span></span></div>');
+  const loading = addMsg('ai', '<div class="dots"><span></span><span></span><span></span></div>');
+  history.push({ role: 'user', content: text });
   try {
-    const reply = await callAI(text);
-    loading.querySelector('.bubble').innerHTML = reply.replace(/\n/g,'<br>');
+    const reply = await callAI(history, SYSTEM);
+    history.push({ role: 'assistant', content: reply });
+    loading.querySelector('.bubble').innerHTML = reply.replace(/\n/g, '<br>');
   } catch(e) {
     loading.querySelector('.bubble').textContent = '通信エラーが発生しました。';
   }
@@ -219,22 +218,17 @@ function askEvent(text) {
 
 async function parseNatural() {
   const text = document.getElementById('natural-input').value.trim();
-  if(!text) return;
+  if (!text) return;
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:200,
-        system:'予定テキストからタイトル・日付(YYYY-MM-DD)・時刻(HH:MM)・場所をJSONのみで返してください。例:{"title":"MTG","date":"2026-05-21","time":"15:00","location":"Zoom"}',
-        messages:[{role:'user',content:text}]})
-    });
-    const data = await res.json();
-    const raw = data.content?.find(b=>b.type==='text')?.text||'{}';
-    const ev = JSON.parse(raw.replace(/```json|```/g,'').trim());
-    if(ev.title) document.getElementById('ev-title').value = ev.title;
-    if(ev.date) document.getElementById('ev-date').value = ev.date;
-    if(ev.time) document.getElementById('ev-time').value = ev.time;
-    if(ev.location) document.getElementById('ev-location').value = ev.location;
+    const reply = await callAI(
+      [{ role: 'user', content: text }],
+      '予定テキストからタイトル・日付(YYYY-MM-DD)・時刻(HH:MM)・場所をJSONのみで返してください。例:{"title":"MTG","date":"2026-05-21","time":"15:00","location":"Zoom"}'
+    );
+    const ev = JSON.parse(reply.replace(/```json|```/g, '').trim());
+    if (ev.title) document.getElementById('ev-title').value = ev.title;
+    if (ev.date) document.getElementById('ev-date').value = ev.date;
+    if (ev.time) document.getElementById('ev-time').value = ev.time;
+    if (ev.location) document.getElementById('ev-location').value = ev.location;
     document.getElementById('natural-input').value = '';
     switchView('add', document.querySelectorAll('.nav button')[2]);
   } catch(e) { alert('解析エラー'); }
@@ -244,15 +238,15 @@ function addEvent() {
   const title = document.getElementById('ev-title').value.trim();
   const date = document.getElementById('ev-date').value;
   const time = document.getElementById('ev-time').value;
-  if(!title||!date||!time){alert('タイトル・日付・時刻を入力してください');return;}
+  if (!title || !date || !time) { alert('タイトル・日付・時刻を入力してください'); return; }
   const msg = document.getElementById('result-msg');
   msg.style.display = 'block';
   msg.textContent = `✅「${title}」を${date} ${time}で追加しました`;
-  document.getElementById('ev-title').value='';
-  document.getElementById('ev-date').value='';
-  document.getElementById('ev-time').value='';
-  document.getElementById('ev-location').value='';
-  setTimeout(()=>msg.style.display='none',3000);
+  document.getElementById('ev-title').value = '';
+  document.getElementById('ev-date').value = '';
+  document.getElementById('ev-time').value = '';
+  document.getElementById('ev-location').value = '';
+  setTimeout(() => msg.style.display = 'none', 3000);
 }
 </script>
 </body>
