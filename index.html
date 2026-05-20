@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#534AB7">
+<title>AI秘書</title>
+<link rel="manifest" href="manifest.json">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f7;height:100vh;display:flex;flex-direction:column}
+.header{background:#534AB7;color:#fff;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.header h1{font-size:17px;font-weight:600}
+.header .status{font-size:11px;opacity:0.8}
+.nav{display:flex;background:#fff;border-bottom:1px solid #e5e5e5;flex-shrink:0}
+.nav button{flex:1;padding:12px 8px;border:none;background:transparent;font-size:12px;color:#888;cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s}
+.nav button.active{color:#534AB7;border-bottom-color:#534AB7;font-weight:600}
+.view{display:none;flex:1;overflow-y:auto;padding:16px}
+.view.active{display:flex;flex-direction:column;gap:12px}
+.chat-wrap{display:flex;flex-direction:column;height:100%}
+.messages{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding-bottom:8px}
+.msg{display:flex;gap:8px;align-items:flex-end}
+.msg.user{flex-direction:row-reverse}
+.bubble{max-width:80%;padding:10px 14px;border-radius:18px;font-size:14px;line-height:1.5}
+.msg.ai .bubble{background:#fff;border:1px solid #e5e5e5;border-radius:4px 18px 18px 18px}
+.msg.user .bubble{background:#534AB7;color:#fff;border-radius:18px 4px 18px 18px}
+.avatar{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.ai .avatar{background:#EEEDFE;color:#534AB7}
+.user .avatar{background:#534AB7;color:#fff}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.chip{font-size:12px;padding:6px 12px;border-radius:20px;border:1px solid #534AB7;color:#534AB7;background:#fff;cursor:pointer}
+.chip:active{background:#EEEDFE}
+.input-row{display:flex;gap:8px;padding-top:10px;border-top:1px solid #e5e5e5;margin-top:8px}
+.input-row input{flex:1;padding:10px 14px;border-radius:22px;border:1px solid #ddd;font-size:14px;outline:none}
+.input-row input:focus{border-color:#534AB7}
+.send{width:38px;height:38px;border-radius:50%;background:#534AB7;border:none;color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.event-card{background:#fff;border-radius:12px;border:1px solid #e5e5e5;padding:14px 16px}
+.event-time{font-size:12px;color:#888;margin-bottom:4px}
+.event-title{font-size:15px;font-weight:600;color:#1a1a1a;margin-bottom:4px}
+.event-detail{font-size:12px;color:#888}
+.event-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+.event-actions{display:flex;gap:8px;margin-top:10px}
+.ev-btn{font-size:12px;padding:5px 12px;border-radius:8px;border:1px solid #ddd;background:#fff;color:#534AB7;cursor:pointer}
+.section-label{font-size:11px;font-weight:600;color:#888;letter-spacing:0.05em;text-transform:uppercase;margin-top:4px}
+.add-form{background:#fff;border-radius:12px;border:1px solid #e5e5e5;padding:16px;display:flex;flex-direction:column;gap:10px}
+.add-form input{width:100%;padding:10px 12px;border-radius:8px;border:1px solid #ddd;font-size:14px;outline:none}
+.add-form input:focus{border-color:#534AB7}
+.form-row{display:flex;gap:8px}
+.form-row input{flex:1}
+.primary-btn{background:#534AB7;color:#fff;border:none;border-radius:8px;padding:11px;font-size:14px;font-weight:600;cursor:pointer;width:100%}
+.ai-parse-btn{background:#fff;color:#534AB7;border:1px solid #534AB7;border-radius:8px;padding:11px;font-size:14px;font-weight:600;cursor:pointer;width:100%}
+.result-msg{padding:10px 14px;border-radius:8px;background:#e8f5e9;color:#2e7d32;font-size:13px;display:none}
+.dots{display:flex;gap:4px;align-items:center}
+.dots span{width:6px;height:6px;border-radius:50%;background:#aaa;animation:blink 1.2s infinite}
+.dots span:nth-child(2){animation-delay:.2s}
+.dots span:nth-child(3){animation-delay:.4s}
+@keyframes blink{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-5px)}}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>🤖 AI秘書</h1>
+  <span class="status">Googleカレンダー連携中</span>
+</div>
+<div class="nav">
+  <button class="active" onclick="switchView('chat',this)">💬 チャット</button>
+  <button onclick="switchView('calendar',this)">📅 カレンダー</button>
+  <button onclick="switchView('add',this)">➕ 追加</button>
+</div>
+
+<!-- チャット -->
+<div id="chat" class="view active">
+  <div class="chat-wrap">
+    <div class="messages" id="messages">
+      <div class="msg ai">
+        <div class="avatar">🤖</div>
+        <div class="bubble">こんにちは！AI秘書です。予定の確認・追加など、何でもどうぞ。</div>
+      </div>
+    </div>
+    <div class="chips" id="chips">
+      <div class="chip" onclick="sendChip('今日の予定を教えて')">📅 今日の予定</div>
+      <div class="chip" onclick="sendChip('今週の空き時間は？')">🕐 空き時間</div>
+      <div class="chip" onclick="sendChip('明日の朝10時にミーティングを追加して')">➕ 予定追加</div>
+    </div>
+    <div class="input-row">
+      <input id="chat-input" type="text" placeholder="メッセージを入力..." onkeydown="if(event.key==='Enter')sendMsg()">
+      <button class="send" onclick="sendMsg()">↑</button>
+    </div>
+  </div>
+</div>
+
+<!-- カレンダー -->
+<div id="calendar" class="view">
+  <div class="section-label">今日の予定</div>
+  <div class="event-card">
+    <div class="event-time"><span class="event-dot" style="background:#534AB7"></span>09:00 〜 10:00</div>
+    <div class="event-title">週次チームミーティング</div>
+    <div class="event-detail">📹 Google Meet・参加者5名</div>
+    <div class="event-actions">
+      <button class="ev-btn" onclick="askEvent('週次チームミーティングの準備は？')">AIに相談</button>
+    </div>
+  </div>
+  <div class="event-card">
+    <div class="event-time"><span class="event-dot" style="background:#1D9E75"></span>13:00 〜 14:00</div>
+    <div class="event-title">ランチMTG — 田中さん</div>
+    <div class="event-detail">📍 丸の内カフェ</div>
+    <div class="event-actions">
+      <button class="ev-btn" onclick="askEvent('田中さんとのランチの議題は？')">AIに相談</button>
+    </div>
+  </div>
+  <div class="event-card">
+    <div class="event-time"><span class="event-dot" style="background:#D85A30"></span>16:00 〜 17:00</div>
+    <div class="event-title">プロジェクトレビュー</div>
+    <div class="event-detail">🏢 会議室B・参加者8名</div>
+    <div class="event-actions">
+      <button class="ev-btn" onclick="askEvent('プロジェクトレビューの後の空き時間は？')">AIに相談</button>
+    </div>
+  </div>
+  <div class="section-label">明日の予定</div>
+  <div class="event-card">
+    <div class="event-time"><span class="event-dot" style="background:#BA7517"></span>10:00 〜 10:30</div>
+    <div class="event-title">採用面接 — 山本さん</div>
+    <div class="event-detail">👤 候補者面接</div>
+    <div class="event-actions">
+      <button class="ev-btn" onclick="askEvent('採用面接でどんな質問をするべき？')">AIに相談</button>
+    </div>
+  </div>
+</div>
+
+<!-- 追加 -->
+<div id="add" class="view">
+  <div class="add-form">
+    <div style="font-size:14px;font-weight:600;color:#534AB7;margin-bottom:4px">✨ AIで自然入力</div>
+    <input id="natural-input" type="text" placeholder='例：明日の午後3時に鈴木さんとZoom30分'>
+    <button class="ai-parse-btn" onclick="parseNatural()">AIで解析して入力 →</button>
+  </div>
+  <div style="text-align:center;font-size:12px;color:#aaa;margin:4px 0">または手動で入力</div>
+  <div class="add-form">
+    <input id="ev-title" type="text" placeholder="タイトル">
+    <div class="form-row">
+      <input id="ev-date" type="date">
+      <input id="ev-time" type="time">
+    </div>
+    <input id="ev-location" type="text" placeholder="場所・URL（任意）">
+    <button class="primary-btn" onclick="addEvent()">カレンダーに追加</button>
+    <div class="result-msg" id="result-msg"></div>
+  </div>
+</div>
+
+<script>
+const SYSTEM = `あなたはGoogleカレンダー連携のAI秘書です。日本語で簡潔に答えてください。
+今日: 2026年5月20日（水）
+今日の予定:
+- 09:00-10:00 週次チームミーティング（Google Meet、5名）
+- 13:00-14:00 ランチMTG 田中さん（丸の内カフェ）
+- 16:00-17:00 プロジェクトレビュー（会議室B、8名）
+明日の予定:
+- 10:00-10:30 採用面接（山本さん）
+2〜3文で答えてください。`;
+
+let history = [];
+
+function switchView(id, btn) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+}
+
+function addMsg(role, text) {
+  const wrap = document.getElementById('messages');
+  const div = document.createElement('div');
+  div.className = 'msg ' + role;
+  div.innerHTML = `<div class="avatar">${role==='ai'?'🤖':'👤'}</div><div class="bubble">${text.replace(/\n/g,'<br>')}</div>`;
+  wrap.appendChild(div);
+  wrap.scrollTop = wrap.scrollHeight;
+  return div;
+}
+
+async function callAI(text) {
+  history.push({role:'user',content:text});
+  const res = await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:400,system:SYSTEM,messages:history})
+  });
+  const data = await res.json();
+  const reply = data.content?.find(b=>b.type==='text')?.text || 'エラーが発生しました。';
+  history.push({role:'assistant',content:reply});
+  return reply;
+}
+
+async function sendMsg() {
+  const inp = document.getElementById('chat-input');
+  const text = inp.value.trim();
+  if(!text) return;
+  inp.value = '';
+  document.getElementById('chips').style.display = 'none';
+  addMsg('user', text);
+  const loading = addMsg('ai','<div class="dots"><span></span><span></span><span></span></div>');
+  try {
+    const reply = await callAI(text);
+    loading.querySelector('.bubble').innerHTML = reply.replace(/\n/g,'<br>');
+  } catch(e) {
+    loading.querySelector('.bubble').textContent = '通信エラーが発生しました。';
+  }
+}
+
+function sendChip(text) {
+  document.getElementById('chat-input').value = text;
+  sendMsg();
+}
+
+function askEvent(text) {
+  switchView('chat', document.querySelector('.nav button'));
+  document.getElementById('chat-input').value = text;
+  sendMsg();
+}
+
+async function parseNatural() {
+  const text = document.getElementById('natural-input').value.trim();
+  if(!text) return;
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:200,
+        system:'予定テキストからタイトル・日付(YYYY-MM-DD)・時刻(HH:MM)・場所をJSONのみで返してください。例:{"title":"MTG","date":"2026-05-21","time":"15:00","location":"Zoom"}',
+        messages:[{role:'user',content:text}]})
+    });
+    const data = await res.json();
+    const raw = data.content?.find(b=>b.type==='text')?.text||'{}';
+    const ev = JSON.parse(raw.replace(/```json|```/g,'').trim());
+    if(ev.title) document.getElementById('ev-title').value = ev.title;
+    if(ev.date) document.getElementById('ev-date').value = ev.date;
+    if(ev.time) document.getElementById('ev-time').value = ev.time;
+    if(ev.location) document.getElementById('ev-location').value = ev.location;
+    document.getElementById('natural-input').value = '';
+    switchView('add', document.querySelectorAll('.nav button')[2]);
+  } catch(e) { alert('解析エラー'); }
+}
+
+function addEvent() {
+  const title = document.getElementById('ev-title').value.trim();
+  const date = document.getElementById('ev-date').value;
+  const time = document.getElementById('ev-time').value;
+  if(!title||!date||!time){alert('タイトル・日付・時刻を入力してください');return;}
+  const msg = document.getElementById('result-msg');
+  msg.style.display = 'block';
+  msg.textContent = `✅「${title}」を${date} ${time}で追加しました`;
+  document.getElementById('ev-title').value='';
+  document.getElementById('ev-date').value='';
+  document.getElementById('ev-time').value='';
+  document.getElementById('ev-location').value='';
+  setTimeout(()=>msg.style.display='none',3000);
+}
+</script>
+</body>
+</html>
