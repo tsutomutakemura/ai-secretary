@@ -3,23 +3,29 @@
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>カレンダーテスト</title>
 <style>
-body{font-family:sans-serif;max-width:600px;margin:20px auto;padding:0 16px;line-height:1.7;}
-textarea{width:100%;height:80px;}
-button{padding:10px 20px;font-size:15px;margin:8px 0;cursor:pointer;}
+body{font-family:sans-serif;max-width:640px;margin:20px auto;padding:0 16px;line-height:1.7;}
+textarea{width:100%;height:70px;}
+button{padding:8px 16px;font-size:14px;margin:4px 4px 4px 0;cursor:pointer;}
 #result{background:#f4f4f4;padding:14px;border-radius:6px;white-space:pre-wrap;margin-top:12px;}
 input{padding:8px;margin:4px 0;width:100%;box-sizing:border-box;font-size:15px;}
 label{font-size:14px;color:#555;display:block;margin-top:8px;}
+.ev{border:1px solid #ddd;border-radius:8px;padding:12px;margin:10px 0;}
+.ev .t{font-weight:bold;}
+.ev .d{font-size:13px;color:#666;margin:4px 0 8px;}
+.del{background:#fdec ec;border:1px solid #e88;color:#c33;}
+.edit-area{background:#f0f7f0;padding:10px;border-radius:6px;margin-top:8px;display:none;}
 </style></head>
 <body>
 <h2>カレンダー連携テスト</h2>
 <p>① アクセストークンを貼ってください：</p>
 <textarea id="token" placeholder="ここにトークンを貼り付け"></textarea>
 
-<h3>📖 今週の予定を読む</h3>
+<h3>📖 今週の予定</h3>
 <button onclick="readEvents()">予定を読み込む</button>
+<div id="list"></div>
 
-<h3>➕ 予定を登録する</h3>
-<label>予定のタイトル</label>
+<h3>➕ 新しい予定を登録</h3>
+<label>タイトル</label>
 <input id="title" placeholder="例：テスト会議">
 <label>開始日時</label>
 <input id="start" type="datetime-local">
@@ -35,34 +41,82 @@ function token(){ return document.getElementById('token').value.trim(); }
 function show(x){ document.getElementById('result').textContent = typeof x==='string'?x:JSON.stringify(x,null,2); }
 function pad(n){ return String(n).padStart(2,'0'); }
 function toLocal(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`; }
+function authH(extra){ return Object.assign({ 'Authorization':'Bearer '+token() }, extra||{}); }
 
 window.addEventListener('DOMContentLoaded', function(){
-  var now = new Date();
-  now.setMinutes(0,0,0);
-  now.setHours(now.getHours()+1);
+  var now = new Date(); now.setMinutes(0,0,0); now.setHours(now.getHours()+1);
   var end = new Date(now.getTime()+60*60*1000);
   document.getElementById('start').value = toLocal(now);
   document.getElementById('end').value = toLocal(end);
-
-  // 開始日時が変更されたら、終了を自動で1時間後にする
   document.getElementById('start').addEventListener('change', function(){
-    var s = this.value;
-    if(!s) return;
-    var d = new Date(s);
-    d.setHours(d.getHours()+1);
+    if(!this.value) return;
+    var d = new Date(this.value); d.setHours(d.getHours()+1);
     document.getElementById('end').value = toLocal(d);
   });
 });
 
 async function readEvents(){
-  show('読み込み中...');
+  document.getElementById('list').textContent = '読み込み中...';
   try{
-    var r = await fetch(api, { headers:{ Authorization:'Bearer '+token() }});
+    var r = await fetch(api, { headers: authH() });
     var d = await r.json();
-    if(d.events){
-      if(d.events.length===0){ show('今週の予定はありません。'); return; }
-      show(d.events.map(function(e){ return '・'+e.title+'\n   '+e.start; }).join('\n\n'));
-    } else { show(d); }
+    if(!d.events){ document.getElementById('list').textContent = JSON.stringify(d,null,2); return; }
+    if(d.events.length===0){ document.getElementById('list').textContent = '今週の予定はありません。'; return; }
+    renderList(d.events);
+  }catch(err){ document.getElementById('list').textContent = 'エラー：'+err.message; }
+}
+
+function renderList(events){
+  var box = document.getElementById('list');
+  box.innerHTML = '';
+  events.forEach(function(e){
+    var div = document.createElement('div');
+    div.className = 'ev';
+    div.innerHTML =
+      '<div class="t">'+e.title+'</div>'+
+      '<div class="d">'+e.start+'</div>'+
+      '<button onclick="toggleEdit(this)">✏️ 変更</button>'+
+      '<button class="del" onclick="delEvent(\''+e.id+'\')">🗑️ 削除</button>'+
+      '<div class="edit-area">'+
+        '<label>タイトル</label><input class="e-title" value="'+e.title.replace(/"/g,'&quot;')+'">'+
+        '<label>開始</label><input class="e-start" type="datetime-local" value="'+toInput(e.start)+'">'+
+        '<label>終了</label><input class="e-end" type="datetime-local" value="'+toInput(e.end)+'">'+
+        '<button onclick="updateEvent(this,\''+e.id+'\')">この内容で更新</button>'+
+      '</div>';
+    box.appendChild(div);
+  });
+}
+function toInput(iso){ if(!iso) return ''; var d=new Date(iso); return toLocal(d); }
+function toggleEdit(btn){
+  var area = btn.parentElement.querySelector('.edit-area');
+  area.style.display = area.style.display==='block' ? 'none' : 'block';
+}
+
+async function delEvent(id){
+  if(!confirm('この予定を削除しますか？')) return;
+  try{
+    var r = await fetch(api+'?id='+encodeURIComponent(id), { method:'DELETE', headers: authH() });
+    var d = await r.json();
+    if(d.ok){ show('🗑️ 削除しました'); readEvents(); }
+    else { show(d); }
+  }catch(err){ show('エラー：'+err.message); }
+}
+
+async function updateEvent(btn, id){
+  var area = btn.parentElement;
+  var title = area.querySelector('.e-title').value;
+  var s = area.querySelector('.e-start').value;
+  var e = area.querySelector('.e-end').value;
+  if(!s || !e){ show('開始・終了を入力してください'); return; }
+  try{
+    var r = await fetch(api, {
+      method:'PUT',
+      headers: authH({ 'Content-Type':'application/json' }),
+      body: JSON.stringify({ id:id, title:title||'(タイトルなし)', start:s+':00', end:e+':00' })
+    });
+    var d = await r.json();
+    if(d.ok){ show('✅ 更新しました'); readEvents(); }
+    else { show(d); }
   }catch(err){ show('エラー：'+err.message); }
 }
 
@@ -70,21 +124,16 @@ async function addEvent(){
   var s = document.getElementById('start').value;
   var e = document.getElementById('end').value;
   if(!s){ show('開始日時を選んでください。'); return; }
-  if(!e || e <= s){
-    var d = new Date(s);
-    d.setHours(d.getHours()+1);
-    e = toLocal(d);
-    document.getElementById('end').value = e;
-  }
+  if(!e || e <= s){ var d=new Date(s); d.setHours(d.getHours()+1); e=toLocal(d); document.getElementById('end').value=e; }
   show('登録中...');
   try{
     var r = await fetch(api, {
       method:'POST',
-      headers:{ 'Authorization':'Bearer '+token(), 'Content-Type':'application/json' },
+      headers: authH({ 'Content-Type':'application/json' }),
       body: JSON.stringify({ title: document.getElementById('title').value || '(タイトルなし)', start: s+':00', end: e+':00' })
     });
     var data = await r.json();
-    if(data.ok){ show('✅ 登録できました！\n'+data.link); }
+    if(data.ok){ show('✅ 登録できました！\n'+data.link); readEvents(); }
     else { show(data); }
   }catch(err){ show('エラー：'+err.message); }
 }
