@@ -7,7 +7,8 @@ body{font-family:sans-serif;max-width:600px;margin:20px auto;padding:0 16px;line
 textarea{width:100%;height:80px;}
 button{padding:10px 20px;font-size:15px;margin:8px 0;cursor:pointer;}
 #result{background:#f4f4f4;padding:14px;border-radius:6px;white-space:pre-wrap;margin-top:12px;}
-input{padding:6px;margin:4px 0;width:100%;box-sizing:border-box;}
+input{padding:8px;margin:4px 0;width:100%;box-sizing:border-box;font-size:15px;}
+label{font-size:14px;color:#555;display:block;margin-top:8px;}
 </style></head>
 <body>
 <h2>カレンダー連携テスト</h2>
@@ -18,9 +19,12 @@ input{padding:6px;margin:4px 0;width:100%;box-sizing:border-box;}
 <button onclick="readEvents()">予定を読み込む</button>
 
 <h3>➕ 予定を登録する</h3>
-<input id="title" placeholder="予定のタイトル（例：テスト会議）">
-<input id="start" placeholder="開始 例：2026-06-16T10:00:00">
-<input id="end" placeholder="終了 例：2026-06-16T11:00:00">
+<label>予定のタイトル</label>
+<input id="title" placeholder="例：テスト会議">
+<label>開始日時</label>
+<input id="start" type="datetime-local">
+<label>終了日時</label>
+<input id="end" type="datetime-local">
 <button onclick="addEvent()">予定を登録する</button>
 
 <div id="result"></div>
@@ -29,6 +33,20 @@ input{padding:6px;margin:4px 0;width:100%;box-sizing:border-box;}
 const api = '/api/calendar';
 function token(){ return document.getElementById('token').value.trim(); }
 function show(x){ document.getElementById('result').textContent = typeof x==='string'?x:JSON.stringify(x,null,2); }
+
+// 起動時、開始・終了に「次の正時」と「その1時間後」を初期セット
+window.addEventListener('DOMContentLoaded', ()=>{
+  const now = new Date();
+  now.setMinutes(0,0,0);
+  now.setHours(now.getHours()+1);
+  const end = new Date(now.getTime()+60*60*1000);
+  document.getElementById('start').value = toLocal(now);
+  document.getElementById('end').value = toLocal(end);
+});
+function toLocal(d){
+  const p=n=>String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
 
 async function readEvents(){
   show('読み込み中...');
@@ -43,15 +61,18 @@ async function readEvents(){
 }
 
 async function addEvent(){
+  const s = document.getElementById('start').value;
+  const e = document.getElementById('end').value;
+  if(!s || !e){ show('開始・終了日時を選んでください。'); return; }
   show('登録中...');
   try{
     const r = await fetch(api, {
       method:'POST',
       headers:{ 'Authorization':'Bearer '+token(), 'Content-Type':'application/json' },
       body: JSON.stringify({
-        title: document.getElementById('title').value,
-        start: document.getElementById('start').value,
-        end: document.getElementById('end').value,
+        title: document.getElementById('title').value || '(タイトルなし)',
+        start: s + ':00',
+        end: e + ':00',
       })
     });
     const d = await r.json();
