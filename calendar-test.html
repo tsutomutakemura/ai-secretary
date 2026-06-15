@@ -61,9 +61,16 @@ async function readEvents(){
 }
 
 async function addEvent(){
-  const s = document.getElementById('start').value;
-  const e = document.getElementById('end').value;
-  if(!s || !e){ show('開始・終了日時を選んでください。'); return; }
+  let s = document.getElementById('start').value;
+  let e = document.getElementById('end').value;
+  if(!s){ show('開始日時を選んでください。'); return; }
+  // 終了が未入力、または開始以前なら、開始の1時間後に自動修正
+  if(!e || e <= s){
+    const d = new Date(s);
+    d.setHours(d.getHours()+1);
+    const p=n=>String(n).padStart(2,'0');
+    e = `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+    document.getElementById('end').value = e;
   show('登録中...');
   try{
     const r = await fetch(api, {
