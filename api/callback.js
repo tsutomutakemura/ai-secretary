@@ -38,7 +38,7 @@ export default async function handler(req, res) {
         <p>カレンダーへのアクセス許可が取得できました。</p>
         <p>次のステップで、この値を使ってカレンダーを読み書きします。</p>
         <hr>
-        <p style="color:#888;font-size:13px;">アクセストークン（先頭のみ表示）：${accessToken.substring(0, 20)}...</p>
+        <p style="font-size:12px;word-break:break-all;background:#f4f4f4;padding:12px;border-radius:6px;">アクセストークン（このあと使います）：<br>${accessToken}</p>
         <p style="color:#888;font-size:13px;">リフレッシュトークン取得：${refreshToken ? 'あり ✅' : 'なし'}</p>
       </body></html>
     `);
