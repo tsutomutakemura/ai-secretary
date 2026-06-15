@@ -43,6 +43,15 @@ window.addEventListener('DOMContentLoaded', function(){
   var end = new Date(now.getTime()+60*60*1000);
   document.getElementById('start').value = toLocal(now);
   document.getElementById('end').value = toLocal(end);
+
+  // 開始日時が変更されたら、終了を自動で1時間後にする
+  document.getElementById('start').addEventListener('change', function(){
+    var s = this.value;
+    if(!s) return;
+    var d = new Date(s);
+    d.setHours(d.getHours()+1);
+    document.getElementById('end').value = toLocal(d);
+  });
 });
 
 async function readEvents(){
