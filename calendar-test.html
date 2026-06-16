@@ -24,6 +24,11 @@ label{font-size:14px;color:#555;display:block;margin-top:8px;}
 <button onclick="readEvents()">予定を読み込む</button>
 <div id="list"></div>
 
+<h3>🤖 AIに話しかけて登録</h3>
+<input id="aiText" placeholder="例：明日10時に難波様と打ち合わせ">
+<button onclick="aiAdd()">AIで予定を作る</button>
+<div id="aiPreview" style="background:#eef6ff;padding:10px;border-radius:6px;margin-top:8px;display:none;"></div>
+  
 <h3>➕ 新しい予定を登録</h3>
 <label>タイトル</label>
 <input id="title" placeholder="例：テスト会議">
@@ -120,6 +125,28 @@ async function updateEvent(btn, id){
   }catch(err){ show('エラー：'+err.message); }
 }
 
+async function aiAdd(){
+  var text = document.getElementById('aiText').value.trim();
+  if(!text){ show('予定の内容を入力してください。'); return; }
+  show('AIが解析中...');
+  try{
+    var r = await fetch('/api/parse', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ text: text })
+    });
+    var p = await r.json();
+    if(p.error){ show('AI：'+p.error+(p.raw?('\n（AIの返答：'+p.raw+'）'):'')); return; }
+    // フォームに反映して内容を見せる
+    document.getElementById('title').value = p.title || '';
+    document.getElementById('start').value = (p.start||'').slice(0,16);
+    document.getElementById('end').value = (p.end||'').slice(0,16);
+    var prev = document.getElementById('aiPreview');
+    prev.style.display = 'block';
+    prev.textContent = '📋 AIが読み取った内容：\n「'+p.title+'」\n'+p.start+' 〜 '+p.end+'\n\n下の「予定を登録する」を押すと登録します（重複チェックも働きます）。';
+  }catch(err){ show('エラー：'+err.message); }
+}
+  
 async function addEvent(){
   var s = document.getElementById('start').value;
   var e = document.getElementById('end').value;
