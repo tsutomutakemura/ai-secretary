@@ -1,52 +1,77 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>カレンダーテスト</title>
+<title>AI秘書｜カレンダー</title>
 <style>
-body{font-family:sans-serif;max-width:640px;margin:20px auto;padding:0 16px;line-height:1.7;}
-textarea{width:100%;height:70px;}
-button{padding:8px 16px;font-size:14px;margin:4px 4px 4px 0;cursor:pointer;}
-#result{background:#f4f4f4;padding:14px;border-radius:6px;white-space:pre-wrap;margin-top:12px;}
-input{padding:8px;margin:4px 0;width:100%;box-sizing:border-box;font-size:15px;}
-label{font-size:14px;color:#555;display:block;margin-top:8px;}
-.ev{border:1px solid #ddd;border-radius:8px;padding:12px;margin:10px 0;}
-.ev .t{font-weight:bold;}
-.ev .d{font-size:13px;color:#666;margin:4px 0 8px;}
-.del{background:#fdecec;border:1px solid #e88;color:#c33;}
-.edit-area{background:#f0f7f0;padding:10px;border-radius:6px;margin-top:8px;display:none;}
+:root{
+  --fukamidori:#1B4332; --aotake:#4A8B6F; --wakatake:#68BE8D;
+  --wakatake-light:#E3F2E9; --kinari:#F7F5EF; --sumi:#2B2B2B; --gray:#6B6B63;
+}
+*{box-sizing:border-box;}
+body{font-family:"Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",sans-serif;
+  max-width:680px;margin:0 auto;padding:0 16px 60px;background:var(--kinari);color:var(--sumi);line-height:1.8;}
+header{text-align:center;padding:24px 0 12px;}
+header h1{color:var(--fukamidori);font-size:22px;margin:0;letter-spacing:.05em;}
+header p{color:var(--gray);font-size:13px;margin:4px 0 0;}
+.card{background:#fff;border-radius:12px;padding:20px;margin:16px 0;box-shadow:0 2px 10px rgba(43,43,43,.06);}
+.card h2{font-size:16px;color:var(--fukamidori);margin:0 0 14px;display:flex;align-items:center;gap:8px;}
+button{background:var(--fukamidori);color:#fff;border:none;padding:11px 20px;font-size:14px;
+  border-radius:8px;cursor:pointer;transition:background .2s;margin:4px 4px 4px 0;}
+button:hover{background:var(--aotake);}
+button.sub{background:#fff;color:var(--fukamidori);border:1.5px solid var(--fukamidori);}
+button.sub:hover{background:var(--wakatake-light);}
+button.del{background:#fff;color:#c0392b;border:1.5px solid #e3a;}
+button.del:hover{background:#fdecec;}
+input{padding:10px;margin:4px 0;width:100%;border:1px solid #d8d5cb;border-radius:8px;font-size:15px;background:#fff;}
+label{font-size:13px;color:var(--gray);display:block;margin-top:10px;}
+.ev{border:1px solid #e6e3d9;border-left:4px solid var(--aotake);border-radius:8px;padding:14px;margin:10px 0;background:#fff;}
+.ev .t{font-weight:bold;color:var(--fukamidori);font-size:15px;}
+.ev .d{font-size:13px;color:var(--gray);margin:4px 0 10px;}
+.edit-area{background:var(--wakatake-light);padding:12px;border-radius:8px;margin-top:10px;display:none;}
+#result{font-size:14px;color:var(--fukamidori);background:var(--wakatake-light);padding:12px 14px;
+  border-radius:8px;margin-top:14px;white-space:pre-wrap;display:none;}
+#aiPreview{background:#eef6ff;padding:12px;border-radius:8px;margin-top:10px;font-size:14px;display:none;white-space:pre-wrap;}
+.hint{font-size:12px;color:var(--gray);margin-top:6px;}
 </style></head>
 <body>
-<h2>カレンダー連携テスト</h2>
-<p>① アクセストークンを貼ってください：</p>
-<textarea id="token" placeholder="ここにトークンを貼り付け"></textarea>
+<header>
+  <h1>🗓 AI秘書 カレンダー</h1>
+  <p>株式会社竹村製作所</p>
+</header>
 
-<h3>📖 今週の予定</h3>
-<button onclick="readEvents()">予定を読み込む</button>
-<div id="list"></div>
+<div class="card">
+  <h2>🤖 話しかけて予定を追加</h2>
+  <input id="aiText" placeholder="例：明日10時に難波様と打ち合わせ">
+  <button onclick="aiAdd()">AIで読み取る</button>
+  <p class="hint">日付・時刻を自動で読み取り、下の入力欄に反映します。</p>
+  <div id="aiPreview"></div>
+</div>
 
-<h3>🤖 AIに話しかけて登録</h3>
-<input id="aiText" placeholder="例：明日10時に難波様と打ち合わせ">
-<button onclick="aiAdd()">AIで予定を作る</button>
-<div id="aiPreview" style="background:#eef6ff;padding:10px;border-radius:6px;margin-top:8px;display:none;"></div>
-  
-<h3>➕ 新しい予定を登録</h3>
-<label>タイトル</label>
-<input id="title" placeholder="例：テスト会議">
-<label>開始日時</label>
-<input id="start" type="datetime-local">
-<label>終了日時</label>
-<input id="end" type="datetime-local">
-<button onclick="addEvent()">予定を登録する</button>
+<div class="card">
+  <h2>➕ 予定を登録</h2>
+  <label>タイトル</label>
+  <input id="title" placeholder="例：テスト会議">
+  <label>開始日時</label>
+  <input id="start" type="datetime-local">
+  <label>終了日時</label>
+  <input id="end" type="datetime-local">
+  <button onclick="addEvent()">この内容で登録</button>
+  <p class="hint">同じ時間帯に予定があれば、登録前に確認します。</p>
+</div>
+
+<div class="card">
+  <h2>📖 今週の予定</h2>
+  <button class="sub" onclick="readEvents()">予定を読み込む</button>
+  <div id="list"></div>
+</div>
 
 <div id="result"></div>
 
 <script>
 const api = '/api/calendar';
-function token(){ return document.getElementById('token').value.trim(); }
-function show(x){ document.getElementById('result').textContent = typeof x==='string'?x:JSON.stringify(x,null,2); }
+function show(x){ var el=document.getElementById('result'); el.style.display='block'; el.textContent = typeof x==='string'?x:JSON.stringify(x,null,2); }
 function pad(n){ return String(n).padStart(2,'0'); }
 function toLocal(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`; }
-function authH(extra){ return Object.assign({ 'Authorization':'Bearer '+token() }, extra||{}); }
 
 window.addEventListener('DOMContentLoaded', function(){
   var now = new Date(); now.setMinutes(0,0,0); now.setHours(now.getHours()+1);
@@ -58,12 +83,13 @@ window.addEventListener('DOMContentLoaded', function(){
     var d = new Date(this.value); d.setHours(d.getHours()+1);
     document.getElementById('end').value = toLocal(d);
   });
+  readEvents();
 });
 
 async function readEvents(){
   document.getElementById('list').textContent = '読み込み中...';
   try{
-    var r = await fetch(api, { headers: authH() });
+    var r = await fetch(api);
     var d = await r.json();
     if(!d.events){ document.getElementById('list').textContent = JSON.stringify(d,null,2); return; }
     if(d.events.length===0){ document.getElementById('list').textContent = '今週の予定はありません。'; return; }
@@ -72,38 +98,34 @@ async function readEvents(){
 }
 
 function renderList(events){
-  var box = document.getElementById('list');
-  box.innerHTML = '';
+  var box = document.getElementById('list'); box.innerHTML = '';
   events.forEach(function(e){
-    var div = document.createElement('div');
-    div.className = 'ev';
+    var sd = new Date(e.start);
+    var label = (sd.getMonth()+1)+'/'+sd.getDate()+' '+pad(sd.getHours())+':'+pad(sd.getMinutes());
+    var div = document.createElement('div'); div.className='ev';
     div.innerHTML =
       '<div class="t">'+e.title+'</div>'+
-      '<div class="d">'+e.start+'</div>'+
-      '<button onclick="toggleEdit(this)">✏️ 変更</button>'+
+      '<div class="d">'+label+'</div>'+
+      '<button class="sub" onclick="toggleEdit(this)">✏️ 変更</button>'+
       '<button class="del" onclick="delEvent(\''+e.id+'\')">🗑️ 削除</button>'+
       '<div class="edit-area">'+
         '<label>タイトル</label><input class="e-title" value="'+e.title.replace(/"/g,'&quot;')+'">'+
         '<label>開始</label><input class="e-start" type="datetime-local" value="'+toInput(e.start)+'">'+
         '<label>終了</label><input class="e-end" type="datetime-local" value="'+toInput(e.end)+'">'+
-        '<button onclick="updateEvent(this,\''+e.id+'\')">この内容で更新</button>'+
+        '<button onclick="updateEvent(this,\''+e.id+'\')">更新する</button>'+
       '</div>';
     box.appendChild(div);
   });
 }
-function toInput(iso){ if(!iso) return ''; var d=new Date(iso); return toLocal(d); }
-function toggleEdit(btn){
-  var area = btn.parentElement.querySelector('.edit-area');
-  area.style.display = area.style.display==='block' ? 'none' : 'block';
-}
+function toInput(iso){ if(!iso) return ''; return toLocal(new Date(iso)); }
+function toggleEdit(btn){ var a=btn.parentElement.querySelector('.edit-area'); a.style.display = a.style.display==='block'?'none':'block'; }
 
 async function delEvent(id){
   if(!confirm('この予定を削除しますか？')) return;
   try{
-    var r = await fetch(api+'?id='+encodeURIComponent(id), { method:'DELETE', headers: authH() });
+    var r = await fetch(api+'?id='+encodeURIComponent(id), { method:'DELETE' });
     var d = await r.json();
-    if(d.ok){ show('🗑️ 削除しました'); readEvents(); }
-    else { show(d); }
+    if(d.ok){ show('🗑️ 削除しました'); readEvents(); } else { show(d); }
   }catch(err){ show('エラー：'+err.message); }
 }
 
@@ -114,81 +136,51 @@ async function updateEvent(btn, id){
   var e = area.querySelector('.e-end').value;
   if(!s || !e){ show('開始・終了を入力してください'); return; }
   try{
-    var r = await fetch(api, {
-      method:'PUT',
-      headers: authH({ 'Content-Type':'application/json' }),
-      body: JSON.stringify({ id:id, title:title||'(タイトルなし)', start:s+':00', end:e+':00' })
-    });
+    var r = await fetch(api, { method:'PUT', headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ id:id, title:title||'(タイトルなし)', start:s+':00', end:e+':00' }) });
     var d = await r.json();
-    if(d.ok){ show('✅ 更新しました'); readEvents(); }
-    else { show(d); }
+    if(d.ok){ show('✅ 更新しました'); readEvents(); } else { show(d); }
   }catch(err){ show('エラー：'+err.message); }
 }
 
 async function aiAdd(){
   var text = document.getElementById('aiText').value.trim();
   if(!text){ show('予定の内容を入力してください。'); return; }
-  show('AIが解析中...');
+  var prev = document.getElementById('aiPreview'); prev.style.display='block'; prev.textContent='AIが解析中...';
   try{
-    var r = await fetch('/api/parse', {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json' },
-      body: JSON.stringify({ text: text })
-    });
+    var r = await fetch('/api/parse', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ text: text }) });
     var p = await r.json();
-    if(p.error){ show('AI：'+p.error+(p.raw?('\n（AIの返答：'+p.raw+'）'):'')); return; }
-    // フォームに反映して内容を見せる
+    if(p.error){ prev.textContent='AI：'+p.error+(p.raw?('\n（AIの返答：'+p.raw+'）'):''); return; }
     document.getElementById('title').value = p.title || '';
     document.getElementById('start').value = (p.start||'').slice(0,16);
     document.getElementById('end').value = (p.end||'').slice(0,16);
-    var prev = document.getElementById('aiPreview');
-    prev.style.display = 'block';
-    prev.textContent = '📋 AIが読み取った内容：\n「'+p.title+'」\n'+p.start+' 〜 '+p.end+'\n\n下の「予定を登録する」を押すと登録します（重複チェックも働きます）。';
-  }catch(err){ show('エラー：'+err.message); }
+    prev.textContent = '📋 読み取り結果：「'+p.title+'」\n'+p.start+' 〜 '+p.end+'\n\n「予定を登録」の「この内容で登録」を押すと確定します。';
+  }catch(err){ prev.textContent='エラー：'+err.message; }
 }
-  
+
 async function addEvent(){
   var s = document.getElementById('start').value;
   var e = document.getElementById('end').value;
   if(!s){ show('開始日時を選んでください。'); return; }
   if(!e || e <= s){ var d=new Date(s); d.setHours(d.getHours()+1); e=toLocal(d); document.getElementById('end').value=e; }
-
-  // --- 重なりチェック ---
   show('重複を確認中...');
-  var newStart = new Date(s+':00');
-  var newEnd = new Date(e+':00');
+  var ns = new Date(s+':00'), ne = new Date(e+':00');
   try{
-    var rc = await fetch(api, { headers: authH() });
-    var dc = await rc.json();
+    var rc = await fetch(api); var dc = await rc.json();
     if(dc.events){
-      var overlaps = dc.events.filter(function(ev){
-        var es = new Date(ev.start);
-        var ee = new Date(ev.end);
-        return (newStart < ee && newEnd > es); // 時間帯が少しでも重なるか
-      });
-      if(overlaps.length > 0){
-        var list = overlaps.map(function(ev){
-          var d = new Date(ev.start);
-          var hm = pad(d.getHours())+':'+pad(d.getMinutes());
-          return '・'+ev.title+'（'+hm+'〜）';
-        }).join('\n');
-        var ok = confirm('⚠️ この時間帯には、すでに次の予定が入っています：\n\n'+list+'\n\nそれでも登録しますか？');
-        if(!ok){ show('登録をキャンセルしました。'); return; }
+      var ov = dc.events.filter(function(ev){ var es=new Date(ev.start),ee=new Date(ev.end); return (ns<ee&&ne>es); });
+      if(ov.length>0){
+        var list = ov.map(function(ev){ var d=new Date(ev.start); return '・'+ev.title+'（'+pad(d.getHours())+':'+pad(d.getMinutes())+'〜）'; }).join('\n');
+        if(!confirm('⚠️ この時間帯には、すでに次の予定が入っています：\n\n'+list+'\n\nそれでも登録しますか？')){ show('登録をキャンセルしました。'); return; }
       }
     }
-  }catch(err){ /* 確認に失敗しても登録は進める */ }
-
-  // --- 登録 ---
+  }catch(err){}
   show('登録中...');
   try{
-    var r = await fetch(api, {
-      method:'POST',
-      headers: authH({ 'Content-Type':'application/json' }),
-      body: JSON.stringify({ title: document.getElementById('title').value || '(タイトルなし)', start: s+':00', end: e+':00' })
-    });
+    var r = await fetch(api, { method:'POST', headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ title: document.getElementById('title').value || '(タイトルなし)', start: s+':00', end: e+':00' }) });
     var data = await r.json();
-    if(data.ok){ show('✅ 登録できました！\n'+data.link); readEvents(); }
-    else { show(data); }
+    if(data.ok){ show('✅ 登録できました！'); document.getElementById('aiPreview').style.display='none'; readEvents(); } else { show(data); }
   }catch(err){ show('エラー：'+err.message); }
 }
 </script>
