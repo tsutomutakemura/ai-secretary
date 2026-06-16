@@ -1,17 +1,33 @@
+// リフレッシュトークンから新しいアクセストークンを取得する
+async function getAccessToken() {
+  const r = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: process.env.GOOGLE_CLIENT_ID,
+      client_secret: process.env.GOOGLE_CLIENT_SECRET,
+      refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
+      grant_type: 'refresh_token',
+    }).toString(),
+  });
+  const data = await r.json();
+  if (!r.ok) throw new Error('トークン更新失敗: ' + JSON.stringify(data));
+  return data.access_token;
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
 
-  const auth = req.headers.authorization || '';
-  const token = auth.replace('Bearer ', '');
-  if (!token) { res.status(401).json({ error: 'アクセストークンがありません' }); return; }
-
   const base = 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
-  const authHeader = { Authorization: `Bearer ${token}` };
 
   try {
+    // 毎回ここで新しいトークンを自動取得（コピペ不要に）
+    const token = await getAccessToken();
+    const authHeader = { Authorization: `Bearer ${token}` };
+
     // ===== 読む（GET） =====
     if (req.method === 'GET') {
       const now = new Date();
