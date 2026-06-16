@@ -125,6 +125,33 @@ async function addEvent(){
   var e = document.getElementById('end').value;
   if(!s){ show('開始日時を選んでください。'); return; }
   if(!e || e <= s){ var d=new Date(s); d.setHours(d.getHours()+1); e=toLocal(d); document.getElementById('end').value=e; }
+
+  // --- 重なりチェック ---
+  show('重複を確認中...');
+  var newStart = new Date(s+':00');
+  var newEnd = new Date(e+':00');
+  try{
+    var rc = await fetch(api, { headers: authH() });
+    var dc = await rc.json();
+    if(dc.events){
+      var overlaps = dc.events.filter(function(ev){
+        var es = new Date(ev.start);
+        var ee = new Date(ev.end);
+        return (newStart < ee && newEnd > es); // 時間帯が少しでも重なるか
+      });
+      if(overlaps.length > 0){
+        var list = overlaps.map(function(ev){
+          var d = new Date(ev.start);
+          var hm = pad(d.getHours())+':'+pad(d.getMinutes());
+          return '・'+ev.title+'（'+hm+'〜）';
+        }).join('\n');
+        var ok = confirm('⚠️ この時間帯には、すでに次の予定が入っています：\n\n'+list+'\n\nそれでも登録しますか？');
+        if(!ok){ show('登録をキャンセルしました。'); return; }
+      }
+    }
+  }catch(err){ /* 確認に失敗しても登録は進める */ }
+
+  // --- 登録 ---
   show('登録中...');
   try{
     var r = await fetch(api, {
