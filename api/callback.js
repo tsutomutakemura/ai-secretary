@@ -39,7 +39,9 @@ export default async function handler(req, res) {
         <p>次のステップで、この値を使ってカレンダーを読み書きします。</p>
         <hr>
         <p style="font-size:12px;word-break:break-all;background:#f4f4f4;padding:12px;border-radius:6px;">アクセストークン（このあと使います）：<br>${accessToken}</p>
-        <p style="color:#888;font-size:13px;">リフレッシュトークン取得：${refreshToken ? 'あり ✅' : 'なし'}</p>
+        <<hr>
+        <p style="font-size:13px;color:#c33;">▼ リフレッシュトークン（これをVercelに登録します。1回だけ使う大事な値です）</p>
+        <p style="font-size:12px;word-break:break-all;background:#fff3f3;padding:12px;border-radius:6px;border:1px solid #e88;">${refreshToken || '（取得できませんでした。下の注意書きを参照）'}</p>
       </body></html>
     `);
   } catch (error) {
